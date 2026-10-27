@@ -130,6 +130,9 @@ td input{width:150px;padding:5px 8px;font-size:13px}
 .newitem label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
 .sync{font-size:12px;color:var(--muted)}
+.missbox{margin-top:16px;background:var(--warn-bg);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px}
+.missbox.ok{background:var(--ok-bg);color:var(--ok)}
+.missrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;font-size:14px;align-items:baseline}
 .snform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:14px;align-items:end}
 .snform label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
 @media (max-width:760px){.snform{grid-template-columns:1fr}}
@@ -359,8 +362,8 @@ function renderJobsList(){
 /* ---------- jobbvy ---------- */
 var HINTS = {
   plan:"Planera: varje skanning lägger till enheten i jobbets packlista",
-  ut:"Packa ut: skanna allt som lastas. Det som saknas syns direkt nedan",
-  "in":"Packa in: skanna allt som kommer tillbaka från jobbet"
+  ut:"Packa ut: skanna valfri enhet av varje produkt. Det som saknas syns direkt nedan",
+  "in":"Packa in: skanna varje enhet som kommer tillbaka. Exakt de enheter som packades ut måste komma tillbaka"
 };
 function buildJob(){
   var v=$("#view"), j=jobs.get(jobOpen);
@@ -443,12 +446,19 @@ function updateJob(){
       html+='<div class="prod '+cls+'"><div class="name">'+esc(g.name)+'</div><div class="count">'+(mode==="plan"? g.ids.length+" st" : none? "ej ute" : done+"/"+target.length)+'</div><div class="units">'+
         g.ids.map(function(id){
           var st = on(j["in"],id)&&on(j.ut,id) ? "in" : on(j.ut,id) ? "ut" : "";
-          return '<button class="unit '+st+(id===lastFlash?" flash":"")+'" data-id="'+id+'" title="'+(mode==="plan"?"Ta bort från packlistan":"Klicka för att bocka av eller ångra")+'">'+id+'</button>';
+          var sn=(items.get(id)||{}).serie;
+          return '<button class="unit '+st+(id===lastFlash?" flash":"")+'" data-id="'+id+'" title="'+(sn?"S/N "+esc(sn)+" · ":"")+(mode==="plan"?"Ta bort från packlistan":"Klicka för att bocka av eller ångra")+'">'+id+'</button>';
         }).join("")+'</div></div>';
     });
     html+='</div>';
   });
   html+='<div class="legend"><span><i style="border:1.5px dashed var(--line)"></i>Kvar att packa</span><span><i style="background:var(--accent)"></i>Utpackad</span><span><i style="background:var(--ok-bg);border:1.5px solid var(--ok)"></i>Tillbaka</span></div>';
+  if(mode==="in"){
+    var miss=s.ut.filter(function(i){ return !on(j["in"],i); });
+    if(s.ut.length) html = (miss.length
+      ? '<div class="missbox"><div class="eyebrow" style="color:var(--warn)">Ej tillbaka · '+miss.length+' st</div>'+miss.map(function(i){ var it=items.get(i)||{}; return '<div class="missrow"><span class="mono">'+i+'</span><span>'+esc(it.benamning||"")+unitLabel(i)+'</span><span class="mono muted">'+(it.serie?"S/N "+esc(it.serie):"")+'</span></div>'; }).join("")+'</div>'
+      : '<div class="missbox ok"><strong>Allt är tillbaka.</strong> Alla '+s.ut.length+' utpackade enheter är inskannade.</div>') + html;
+  }
   $("#plist").innerHTML=html; lastFlash=null;
   renderAdd();
 }
@@ -483,6 +493,17 @@ function handleScan(raw){
   }
   if(mode==="ut"){
     if(!inList){
+      // Valfri enhet av samma produkt får fylla en planerad plats som inte är utpackad än
+      var pn=(items.get(id)||{}).produkt_nr;
+      var slot=listIds(j).filter(function(i){ var it=items.get(i); return it && it.produkt_nr===pn && !on(j.ut,i); })[0];
+      if(slot){
+        other=whereOut(id,jobOpen);
+        delete j.lista[slot]; delete j.ut[slot]; delete j["in"][slot];
+        j.lista[id]=true; j.ut[id]=nowIso(); updateJob();
+        call("removeLine",{jobId:j.id,id:slot}).then(function(){ return call("addLines",{jobId:j.id, ids:[id], ut:true}); }).catch(fail);
+        feedback(other?"warn":"ok", id, name+" · utpackad"+(other?", men står som ute på "+other.j.namn:""));
+        return;
+      }
       feedback("warn", id, name+" finns inte i packlistan.", [{label:"Lägg till och bocka av", run:function(){ addToList(j,[id],true); feedback("ok", id, name+" · tillagd och utpackad"); }}]);
       return;
     }
