@@ -130,6 +130,9 @@ td input{width:150px;padding:5px 8px;font-size:13px}
 .newitem label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
 .sync{font-size:12px;color:var(--muted)}
+.snform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:14px;align-items:end}
+.snform label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+@media (max-width:760px){.snform{grid-template-columns:1fr}}
 #camwrap{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.88);display:grid;place-items:center;padding:16px}
 .camin{position:relative;width:min(520px,100%);display:grid;gap:12px;justify-items:center;color:#fff;text-align:center}
 .camin video{width:100%;border-radius:12px;background:#000}
@@ -559,7 +562,10 @@ function renderItem(){
   v.innerHTML = '<section><div class="eyebrow">Enhet</div><h1 class="mono" style="margin-top:4px">'+esc(id)+'</h1>'+
     '<p style="margin:6px 0 0;font-size:18px">'+esc(it.benamning)+(it.antal>1?' <span class="muted mono">'+it.enhet+'/'+it.antal+'</span>':'')+'</p>'+
     '<p class="muted" style="margin:4px 0 0">'+esc([it.kategori, it.artnr, it.serie? "S/N "+it.serie : ""].filter(Boolean).join(" · "))+'</p>'+
-    '<div style="margin-top:10px">'+state+'</div></section>'+
+    '<div style="margin-top:10px">'+state+'</div>'+
+    '<form id="it-sn" class="snform" autocomplete="off"><label>Serienummer<input id="it-serie" value="'+esc(it.serie||"")+'" placeholder="Fyll i eller skanna"></label>'+
+    '<label>Anteckning<input id="it-note" value="'+esc(it.anteckning||"")+'" placeholder="t.ex. repa på displayen"></label>'+
+    '<button class="primary" type="submit" id="it-snbtn">Spara</button></form></section>'+
     '<section><h2>Jobb med den här enheten</h2><div class="jobs">'+(cards||'<div class="empty">Enheten finns inte på något aktivt jobb.</div>')+'</div></section>'+
     (others.length? '<section><h2>Lägg till på jobb</h2><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><select id="it-job" style="flex:1;min-width:200px">'+others.map(function(j){ var b=bookedElsewhere(id,j); return '<option value="'+esc(j.id)+'">'+esc(j.namn)+(j.fran?' · '+period(j):'')+(b?' (krock med '+esc(b.j.namn)+')':'')+'</option>'; }).join("")+'</select><button id="it-add">Lägg till</button><button class="primary" id="it-addout">Lägg till och packa ut</button></div></section>' : '')+
     '<div class="tools"><button id="it-cam" class="primary">Skanna nästa</button><button id="it-jobs">Alla jobb</button></div>';
@@ -572,6 +578,11 @@ function renderItem(){
   var add=function(out){ var j=jobs.get($("#it-job").value); addToList(j,[id],out); beep("ok"); toast(id+" tillagd på "+j.namn+(out?" och utpackad":"")); renderItem(); };
   if($("#it-add")){ $("#it-add").addEventListener("click", function(){ add(false); }); $("#it-addout").addEventListener("click", function(){ add(true); }); }
   $("#it-jobs").addEventListener("click", function(){ go("jobb"); });
+  $("#it-sn").addEventListener("submit", function(e){
+    e.preventDefault(); var serie=$("#it-serie").value.trim(), note=$("#it-note").value.trim();
+    it.serie=serie; it.anteckning=note; $("#it-snbtn").disabled=true;
+    call("setSerial",{id:id, serie:serie, anteckning:note}).then(function(){ $("#it-snbtn").disabled=false; toast("Sparat för "+id); }).catch(function(err){ $("#it-snbtn").disabled=false; fail(err); });
+  });
   $("#it-cam").addEventListener("click", function(){ startCam(function(code){ var nid=normalize(code); if(items.has(nid)){ stopCam(); go("item", nid); } else toast("Okänd kod: "+code); }); });
 }
 
@@ -618,7 +629,7 @@ function renderRegister(){
     '<p class="muted" style="margin:6px 0 0">Varje etikett har ett eget ID. Fyll gärna i serienummer, så vet ni exakt vilken enhet som är vilken.</p>'+
     '<div class="filters"><input id="rq" placeholder="Sök på namn, ID eller serienummer" aria-label="Sök">'+
       '<select id="rc" aria-label="Kategori"><option value="">Alla kategorier</option>'+CATS.map(function(c){return "<option>"+c+"</option>";}).join("")+'</select>'+
-      '<select id="rs" aria-label="Var"><option value="">Hemma och ute</option><option value="hemma">Hemma</option><option value="ute">Ute på jobb</option></select></div>'+
+      '<select id="rs" aria-label="Var"><option value="">Hemma och ute</option><option value="hemma">Hemma</option><option value="ute">Ute på jobb</option><option value="utan">Saknar serienummer</option></select></div>'+
     '<div class="tablewrap"><table><thead><tr><th>ID</th><th>Benämning</th><th>Kategori</th><th>Artikelnr</th><th>Serienummer</th><th>Var</th></tr></thead><tbody id="rbody"></tbody></table></div>'+
     '<p class="muted" id="rcount" style="font-size:13px"></p></section>'+
     '<section><h2>Lägg till ny utrustning</h2><p class="muted" style="margin:4px 0 0;font-size:14px">Nya enheter får nästa lediga ID. Be Claude om etiketter till dem.</p>'+
@@ -647,7 +658,7 @@ function updateRegisterRows(){
   var q=$("#rq").value.trim().toLowerCase(), c=$("#rc").value, s=$("#rs").value;
   var rows=Array.from(items.entries()).sort(function(a,b){return a[0].localeCompare(b[0]);}).filter(function(e){
     var id=e[0], it=e[1]; if(c && it.kategori!==c) return false;
-    var w=whereOut(id); if(s==="hemma"&&w) return false; if(s==="ute"&&!w) return false;
+    var w=whereOut(id); if(s==="hemma"&&w) return false; if(s==="ute"&&!w) return false; if(s==="utan"&&it.serie) return false;
     return !q || (id+" "+it.benamning+" "+(it.artnr||"")+" "+(it.serie||"")).toLowerCase().indexOf(q)>=0;
   });
   body.innerHTML = rows.map(function(e){ var id=e[0], it=e[1], w=whereOut(id);
@@ -656,7 +667,8 @@ function updateRegisterRows(){
       '<td>'+(w?'<button class="pill ute" data-job="'+esc(w.jid)+'">'+esc(w.j.namn)+'</button>':'<span class="pill">Hemma</span>')+'</td></tr>';
   }).join("") || '<tr><td colspan="6" class="muted">'+(items.size?"Inget matchar sökningen.":"Registret är tomt.")+'</td></tr>';
   body.querySelectorAll("[data-job]").forEach(function(b){ b.addEventListener("click", function(){ go("job", b.dataset.job); }); });
-  $("#rcount").textContent = rows.length+" av "+items.size+" enheter";
+  var missingSn=Array.from(items.values()).filter(function(x){return !x.serie;}).length;
+  $("#rcount").textContent = rows.length+" av "+items.size+" enheter · "+missingSn+" saknar serienummer";
 }
 
 /* ---------- skannern skriver även när fokus ligger fel ---------- */
