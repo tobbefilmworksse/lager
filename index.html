@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#00E1F5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SW Lager">
+<title>StreamWorks Lager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: verktygsfält överst, skanningsfältet som ankare, packlistan grupperad per produkt */
+:root{
+  --bg:#F3F6F7; --surface:#FFFFFF; --sunk:#E8EEF0; --line:#D5DFE2; --fg:#0B1416; --muted:#56676C;
+  --accent:#00E1F5; --accent-ink:#00707C; --on-accent:#03282C; --brand:#00C8DB;
+  --ok:#1E8A4B; --ok-bg:#E2F4E9; --warn:#9A5B00; --warn-bg:#FDF0DC; --err:#B8322A; --err-bg:#FBE5E3;
+  --display:"Poppins",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0B1113; --surface:#121B1E; --sunk:#0E1618; --line:#233236; --fg:#E6F0F1; --muted:#8DA1A6;
+  --accent:#1FE3F4; --accent-ink:#5BEAF6; --on-accent:#032428; --brand:#1FE3F4;
+  --ok:#4CC781; --ok-bg:#12291D; --warn:#F1AB45; --warn-bg:#2C2110; --err:#F26D61; --err-bg:#2E1513; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body)}
+[hidden]{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px 48px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
+.logo{font:700 22px/1 var(--display);letter-spacing:-.01em;color:var(--fg);background:none;border:0;padding:0;cursor:pointer}
+.logo span{color:var(--brand)}
+nav{display:flex;gap:4px;margin-left:auto}
+nav button{font:500 14px var(--body);color:var(--muted);background:none;border:0;padding:7px 12px;border-radius:999px;cursor:pointer}
+nav button[aria-current="page"]{background:var(--fg);color:var(--bg)}
+h1{font:700 26px/1.15 var(--display);margin:0;text-wrap:balance}
+h2{font:600 17px/1.2 var(--display);margin:0}
+.eyebrow{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,.btn{font:600 14px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+button.danger{color:var(--err)}
+button.small{padding:4px 10px;font-size:13px}
+button.link{border:0;background:none;color:var(--muted);padding:0;font-weight:500}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+input,select{font:15px var(--body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-width:0}
+section{margin-top:24px}
+.empty{padding:28px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);text-align:center}
+/* Inloggning */
+.login{max-width:380px;margin:12vh auto 0;padding:0 16px;display:grid;gap:14px}
+.login .logo{font-size:30px;text-align:left;cursor:default}
+.login input{font:600 20px var(--mono);letter-spacing:.03em;padding:12px 14px}
+.login .err{color:var(--err);min-height:1.4em;font-weight:500}
+/* Jobblista */
+.newjob{display:grid;grid-template-columns:1.6fr 1fr 1fr .9fr .9fr auto;gap:8px;margin-top:12px;align-items:end}
+.newjob label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.jobs{display:grid;gap:8px;margin-top:12px}
+.jobrow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+.jobrow:hover{border-color:var(--muted)}
+.jobrow .meta{color:var(--muted);font-size:13px}
+.prog{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pill{font:600 12px var(--body);padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap;text-decoration:none;border:0}
+.pill.ute{background:var(--accent);color:var(--on-accent)}
+.pill.klar{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+/* Jobbvy */
+.jobhead{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-top:20px}
+.jobhead .meta{color:var(--muted)}
+.modes{display:inline-flex;background:var(--sunk);border-radius:10px;padding:3px;gap:2px}
+.modes button{border:0;background:transparent;color:var(--muted);padding:8px 14px}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.scanbox{margin-top:16px;background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:14px;display:grid;gap:10px}
+.scanrow{display:flex;gap:8px}
+#scan::placeholder{text-transform:none;letter-spacing:0;font-weight:500}
+#scan{flex:1;font:600 22px var(--mono);letter-spacing:.04em;padding:12px 14px;text-transform:uppercase}
+.fb{min-height:52px;border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--sunk);color:var(--muted)}
+.fb.ok{background:var(--ok-bg);color:var(--ok)}
+.fb.warn{background:var(--warn-bg);color:var(--warn)}
+.fb.err{background:var(--err-bg);color:var(--err)}
+.fb strong{font:700 17px var(--display)}
+.fb .grow{flex:1;min-width:180px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat b{display:block;font:700 24px var(--display);font-variant-numeric:tabular-nums}
+.meter{height:6px;background:var(--sunk);border-radius:6px;overflow:hidden;margin-top:8px}
+.meter i{display:block;height:100%;background:var(--accent)}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+.cat{margin-top:16px}
+.prod{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.prod .name{font-weight:600;min-width:0}
+.prod .count{font:600 13px var(--mono);color:var(--muted)}
+.prod.done .count{color:var(--ok)}
+.prod.missing .count{color:var(--warn)}
+.units{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.unit{font:600 12.5px var(--mono);padding:5px 8px;border-radius:7px;border:1.5px dashed var(--line);background:transparent;color:var(--muted)}
+.unit.ut{border:1.5px solid var(--accent);background:var(--accent);color:var(--on-accent)}
+.unit.in{border:1.5px solid var(--ok);background:var(--ok-bg);color:var(--ok)}
+.unit.flash{animation:fl .9s ease-out}
+@keyframes fl{0%{transform:scale(1.18)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.unit.flash{animation:none}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.side{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;position:sticky;top:76px;margin-top:16px}
+.side input{width:100%}
+.addlist{max-height:420px;overflow:auto;margin-top:8px}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.addrow .btns{display:flex;gap:4px}
+.log{margin-top:12px;font-size:13px;display:grid;gap:4px}
+.log div{display:flex;gap:8px}
+.log .t{color:var(--muted);font-family:var(--mono)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;align-items:center}
+.editjob{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}
+.editjob label{display:grid;gap:3px;font-size:12px;color:var(--muted)}
+/* Register */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.filters input{flex:1;min-width:200px}
+.tablewrap{overflow-x:auto;margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td input{width:150px;padding:5px 8px;font-size:13px}
+.newitem{display:grid;grid-template-columns:2fr 1fr 1fr .6fr auto;gap:8px;margin-top:12px;align-items:end}
+.newitem label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw}
+.sync{font-size:12px;color:var(--muted)}
+#camwrap{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.88);display:grid;place-items:center;padding:16px}
+.camin{position:relative;width:min(520px,100%);display:grid;gap:12px;justify-items:center;color:#fff;text-align:center}
+.camin video{width:100%;border-radius:12px;background:#000}
+.camframe{position:absolute;top:0;left:0;right:0;aspect-ratio:4/3;max-height:70vh;pointer-events:none;border:3px solid var(--accent);border-radius:12px;opacity:.6}
+#camtxt{margin:0;font-weight:600;font-size:16px}
+@media (max-width:760px){
+  .cols{grid-template-columns:1fr}
+  .side{position:static}
+  .newjob,.editjob,.newitem{grid-template-columns:1fr 1fr}
+  .newjob .wide,.newitem .wide{grid-column:1/-1}
+  .stat b{font-size:20px}
+  nav{margin-left:0}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+<body>
+<div id="loginview" class="login">
+  <div class="logo">Streamworks<span>.se</span></div>
+  <div><h1 style="font-size:22px">Lager och packlistor</h1><p class="muted" style="margin:4px 0 0">Ange åtkomstkoden för att fortsätta.</p></div>
+  <form id="loginform" autocomplete="off" style="display:grid;gap:10px">
+    <input id="code" type="password" autocomplete="current-password" placeholder="Åtkomstkod" aria-label="Åtkomstkod" required>
+    <button class="primary" type="submit" id="loginbtn">Logga in</button>
+  </form>
+  <div class="err" id="loginerr" role="alert"></div>
+</div>
+
+<div id="appview" hidden>
+<header><div class="wrap bar" style="padding-bottom:12px">
+  <button class="logo" id="home">Streamworks<span>.se</span></button>
+  <nav>
+    <button id="nav-jobb">Jobb</button>
+    <button id="nav-utr">Utrustning</button>
+  </nav>
+  <span class="sync" id="sync"></span>
+  <button class="link" id="logout">Logga ut</button>
+</div></header>
+<main class="wrap" id="view"><section class="empty">Laddar…</section></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+var $ = function(s,r){ return (r||document).querySelector(s); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+var CATS = ["Bild","Ljud","Grip","Övrigt"];
+var STATUS = {planerad:"Planerad", ute:"Ute", klar:"Klar"};
+var CODE = "";
+var items = new Map(), jobs = new Map();
+var view = "jobb", jobOpen = null, mode = null, lastFlash = null, scanLog = [];
+var pending = 0, lastSync = 0;
+
+/* ---------- server ---------- */
+var API="https://script.google.com/macros/s/AKfycbwDJ72T1JmsJmFSCBnSbPMs0WYk5tqE0LmgW0HUL4Ex0T_LTdPCiX4NuE9fbqnLsngAtA/exec";
+function post(code, action, payload){
+  return fetch(API, {method:"POST", credentials:"omit", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({code:code, action:action, payload:payload||{}})})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+}
+function call(action, payload){
+  pending++; showSync();
+  return post(CODE, action, payload).then(function(r){
+    pending--; showSync();
+    if(r && r.ok) return r.data;
+    if(r && (r.error==="badcode"||r.error==="locked")){ logout(r.error==="locked"?"För många felaktiga försök. Vänta en kvart och försök igen.":"Koden stämmer inte längre. Logga in igen."); }
+    throw (r||{error:"server"});
+  }, function(e){ pending--; showSync(); throw {error:"network", message:String(e && e.message || e)}; });
+}
+function showSync(){
+  var el=$("#sync"); if(!el) return;
+  el.textContent = pending ? "Sparar…" : (lastSync ? "Uppdaterad " + new Date(lastSync).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}) : "");
+}
+function fail(e){ if(e && (e.error==="badcode"||e.error==="locked")) return; toast(e && e.message ? "Kunde inte spara: "+e.message : "Kunde inte spara. Kontrollera uppkopplingen."); reload(); }
+
+function ingest(d){
+  items = new Map(); jobs = new Map();
+  d.items.forEach(function(it){ items.set(it.id, it); });
+  d.jobs.forEach(function(j){ j.lista={}; j.ut={}; j.in={}; jobs.set(j.id, j); });
+  d.lines.forEach(function(l){ var j=jobs.get(l.jobId); if(!j) return; j.lista[l.id]=true; if(l.ut) j.ut[l.id]=l.ut; if(l.in) j.in[l.id]=l.in; });
+  lastSync = Date.now(); showSync();
+}
+function reload(){
+  return call("load").then(function(d){ if(pending>0) return; ingest(d); refresh(); }).catch(function(){});
+}
+
+/* ---------- inloggning ---------- */
+function getSaved(){ try{ return localStorage.getItem("swcode")||""; }catch(e){ return ""; } }
+function save(c){ try{ c? localStorage.setItem("swcode",c) : localStorage.removeItem("swcode"); }catch(e){} }
+function login(c, silent){
+  CODE = c; $("#loginbtn").disabled = true; $("#loginerr").textContent = silent? "Loggar in…" : "Kontrollerar…";
+  post(c, "load", {}).then(function(r){
+    $("#loginbtn").disabled = false;
+    if(r && r.ok){ save(c); ingest(r.data); $("#loginerr").textContent=""; $("#loginview").hidden=true; $("#appview").hidden=false; var st=startId(); if(st && items.has(st)) go("item", st); else go("jobb"); startPolling(); return; }
+    CODE=""; save("");
+    $("#loginerr").textContent = r && r.error==="locked" ? "För många felaktiga försök. Vänta en kvart och försök igen." : (silent? "" : "Fel kod. Försök igen.");
+  }).catch(function(){ $("#loginbtn").disabled=false; $("#loginerr").textContent="Kunde inte nå servern. Kontrollera uppkopplingen."; });
+}
+function logout(msg){ CODE=""; save(""); $("#appview").hidden=true; $("#loginview").hidden=false; $("#loginerr").textContent = msg||""; $("#code").value=""; $("#code").focus(); }
+$("#loginform").addEventListener("submit", function(e){ e.preventDefault(); var c=$("#code").value.trim(); if(c) login(c,false); });
+$("#logout").addEventListener("click", function(){ logout(""); });
+
+var pollTimer=null;
+function startPolling(){
+  if(pollTimer) return;
+  pollTimer = setInterval(function(){ if(!CODE || document.hidden || pending) return; reload(); }, 20000);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden && CODE) reload(); });
+}
+
+var tt;
+function toast(msg){ var t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(function(){t.hidden=true;},2800); }
+
+/* ---------- ljud ---------- */
+var ac=null;
+function beep(kind){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    var o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination);
+    o.frequency.value = kind==="ok"?1320:kind==="warn"?660:220; o.type = kind==="err"?"square":"sine";
+    var d = kind==="ok"?.12:.35;
+    g.gain.setValueAtTime(.12,ac.currentTime); g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);
+    o.start(); o.stop(ac.currentTime+d);
+  }catch(e){}
+}
+
+/* ---------- hjälpare ---------- */
+// Etiketten innehåller bara siffror (0012). Klarar även SW-0012 och SW+0012 (svensk tangentbordslayout).
+function normalize(raw){
+  var s=String(raw).trim(), m;
+  if((m=s.match(/[?&]i=(\d{1,4})/))) return "SW-"+("0000"+m[1]).slice(-4);
+  s=s.toUpperCase();
+  if((m=s.match(/^SW\W?(\d{1,4})$/))) return "SW-"+("0000"+m[1]).slice(-4);
+  if((m=s.match(/^(\d{1,4})$/))) return "SW-"+("0000"+m[1]).slice(-4);
+  return s;
+}
+function on(map,id){ return !!(map && map[id]); }
+function listIds(j){ return Object.keys(j.lista||{}).filter(function(k){return j.lista[k];}).sort(); }
+function stats(j){
+  var ids=listIds(j);
+  var ut=ids.filter(function(i){return on(j.ut,i);});
+  var inn=ids.filter(function(i){return on(j.ut,i)&&on(j.in,i);});
+  return {ids:ids, ut:ut, inn:inn};
+}
+function whereOut(id, except){
+  var hit=null; jobs.forEach(function(j,jid){ if(hit||jid===except||j.status==="klar") return; if(on(j.ut,id)&&!on(j.in,id)) hit={jid:jid,j:j}; });
+  return hit;
+}
+function overlaps(a,b){
+  if(!a.fran||!b.fran) return true;
+  var af=a.fran, at=a.till||a.fran, bf=b.fran, bt=b.till||b.fran;
+  return af<=bt && bf<=at;
+}
+// annat aktivt jobb där enheten är bokad under överlappande datum
+function bookedElsewhere(id, j){
+  var hit=null; jobs.forEach(function(o,oid){ if(hit||oid===j.id||o.status==="klar") return; if(on(o.lista,id) && !(on(o.ut,id)&&on(o.in,id)) && overlaps(j,o)) hit={jid:oid,j:o}; });
+  return hit;
+}
+function itemName(id){ var it=items.get(id); return it? it.benamning : "Okänd"; }
+function unitLabel(id){ var it=items.get(id); return it && it.antal>1 ? " ("+it.enhet+"/"+it.antal+")" : ""; }
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}); }
+function fmtDate(s){ return s? new Date(s+"T12:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short"}) : ""; }
+function period(j){ if(!j.fran) return ""; return j.till && j.till!==j.fran ? fmtDate(j.fran)+" – "+fmtDate(j.till) : fmtDate(j.fran); }
+function nowIso(){ return new Date().toISOString(); }
+
+function startId(){ var v=(new URLSearchParams(location.search).get("i")||"").replace(/\D/g,""); return v? "SW-"+("0000"+v).slice(-4) : ""; }
+var itemOpen=null;
+
+/* ---------- navigering ---------- */
+function go(v, jid){
+  stopCam();
+  view=v; if(v==="job"){ jobOpen=jid; mode=null; } else jobOpen=null;
+  itemOpen = v==="item" ? jid : null;
+  $("#nav-jobb").setAttribute("aria-current", v==="jobb"?"page":"false");
+  $("#nav-utr").setAttribute("aria-current", v==="utr"?"page":"false");
+  if(v==="job") buildJob(); else if(v==="item") renderItem(); else if(v==="utr") renderRegister(); else renderJobs();
+  window.scrollTo(0,0);
+}
+$("#home").addEventListener("click", function(){ go("jobb"); });
+$("#nav-jobb").addEventListener("click", function(){ go("jobb"); });
+$("#nav-utr").addEventListener("click", function(){ go("utr"); });
+function refresh(){
+  if(view==="job") updateJob(); else if(view==="item") renderItem(); else if(view==="utr") updateRegisterRows(); else renderJobsList();
+}
+
+/* ---------- jobblista ---------- */
+function renderJobs(){
+  $("#view").innerHTML =
+    '<section><div class="eyebrow">Utrustning till jobb</div><h1 style="margin-top:4px">Jobb</h1>'+
+    '<form class="newjob" id="nj">'+
+      '<label class="wide">Jobbnamn<input id="nj-namn" placeholder="t.ex. MTFL kick-off" required></label>'+
+      '<label>Kund<input id="nj-kund"></label>'+
+      '<label>Plats<input id="nj-plats"></label>'+
+      '<label>Från<input id="nj-fran" type="date"></label>'+
+      '<label>Till<input id="nj-till" type="date"></label>'+
+      '<button class="primary" type="submit" id="nj-btn">Skapa jobb</button>'+
+    '</form></section><section id="joblist"></section>';
+  $("#nj").addEventListener("submit", function(e){
+    e.preventDefault();
+    var p={namn:$("#nj-namn").value.trim(), kund:$("#nj-kund").value.trim(), plats:$("#nj-plats").value.trim(), fran:$("#nj-fran").value, till:$("#nj-till").value||$("#nj-fran").value};
+    if(!p.namn) return;
+    $("#nj-btn").disabled=true;
+    call("createJob", p).then(function(r){
+      var j={id:r.id, namn:p.namn, kund:p.kund, plats:p.plats, fran:p.fran, till:p.till, status:"planerad", lista:{}, ut:{}, in:{}};
+      jobs.set(r.id, j); go("job", r.id);
+    }).catch(function(e){ $("#nj-btn").disabled=false; fail(e); });
+  });
+  renderJobsList();
+}
+function renderJobsList(){
+  var el=$("#joblist"); if(!el) return;
+  var list=Array.from(jobs.values()).sort(function(a,b){
+    var ord={ute:0,planerad:1,klar:2}; return ((ord[a.status]||1)-(ord[b.status]||1)) || String(a.status==="klar"?b.fran:a.fran||"9").localeCompare(String(a.status==="klar"?a.fran:b.fran||"9"));
+  });
+  if(!list.length){ el.innerHTML='<div class="empty">Inga jobb ännu. Skapa ett ovan, lägg in utrustningen och bocka av när ni packar.</div>'; return; }
+  el.innerHTML='<div class="jobs">'+list.map(function(j){
+    var s=stats(j), missing=j.status!=="planerad"? s.ut.length-s.inn.length : 0;
+    return '<button class="jobrow" data-job="'+esc(j.id)+'"><div><div style="font-weight:600">'+esc(j.namn||"Namnlöst jobb")+'</div>'+
+      '<div class="meta">'+esc([period(j), j.kund, j.plats].filter(Boolean).join(" · "))+'</div></div>'+
+      '<div class="prog"><span class="pill mono">'+s.ut.length+'/'+s.ids.length+' ut</span>'+
+      (j.status==="ute"&&missing>0?'<span class="pill warn mono">'+missing+' ej åter</span>':'')+
+      '<span class="pill '+(j.status==="ute"?"ute":j.status==="klar"?"klar":"")+'">'+(STATUS[j.status]||"Planerad")+'</span></div></button>';
+  }).join("")+'</div>';
+  el.querySelectorAll("[data-job]").forEach(function(b){ b.addEventListener("click", function(){ go("job", b.dataset.job); }); });
+}
+
+/* ---------- jobbvy ---------- */
+var HINTS = {
+  plan:"Planera: varje skanning lägger till enheten i jobbets packlista",
+  ut:"Packa ut: skanna allt som lastas. Det som saknas syns direkt nedan",
+  "in":"Packa in: skanna allt som kommer tillbaka från jobbet"
+};
+function buildJob(){
+  var v=$("#view"), j=jobs.get(jobOpen);
+  if(!j){ v.innerHTML='<section class="empty">Jobbet finns inte längre.</section>'; return; }
+  if(!mode) mode = listIds(j).length ? (j.status==="ute"?"in":"ut") : "plan";
+  v.innerHTML =
+    '<div class="jobhead"><div><button class="link" id="back">← Alla jobb</button>'+
+      '<h1 id="jh-namn" style="margin-top:6px"></h1><div class="meta" id="jh-meta"></div></div>'+
+      '<div class="modes" role="group" aria-label="Läge"><button data-m="plan">Planera</button><button data-m="ut">Packa ut</button><button data-m="in">Packa in</button></div></div>'+
+    '<div class="scanbox"><div class="eyebrow" id="modehint"></div>'+
+      '<form class="scanrow" id="scanform" autocomplete="off"><input id="scan" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Skanna eller skriv ID, t.ex. 12" aria-label="Streckkod"><button class="primary" type="submit">OK</button><button type="button" id="cambtn" title="Skanna QR med kameran">Kamera</button></form>'+
+      '<div class="fb" id="fb"><span>Väntar på skanning.</span></div></div>'+
+    '<div class="summary" id="summary"></div>'+
+    '<div class="cols"><div id="plist"></div>'+
+      '<aside class="side"><h2>Lägg till utrustning</h2><p class="muted" style="margin:4px 0 8px;font-size:13px">Sök i registret eller skanna i läget Planera.</p>'+
+      '<input id="addq" placeholder="Sök, t.ex. BNC eller URSA" aria-label="Sök utrustning"><div class="addlist" id="addlist"></div><div class="log" id="log"></div></aside></div>'+
+    '<div class="tools"><label class="muted" for="jstatus" style="font-size:14px">Status</label>'+
+      '<select id="jstatus"><option value="planerad">Planerad</option><option value="ute">Ute</option><option value="klar">Klar</option></select>'+
+      '<button id="editbtn">Ändra uppgifter</button><button id="copy">Kopiera packlista</button><span style="flex:1"></span>'+
+      '<button class="danger" id="del">Ta bort jobb</button>'+
+      '<span id="delconf" hidden><span class="muted" style="font-size:14px">Säker?</span> <button class="danger" id="delyes">Ja, ta bort</button> <button id="delno">Avbryt</button></span></div>'+
+    '<form class="editjob" id="editform" hidden>'+
+      '<label>Namn<input id="ej-namn"></label><label>Kund<input id="ej-kund"></label><label>Plats<input id="ej-plats"></label>'+
+      '<label>Från<input id="ej-fran" type="date"></label><label>Till<input id="ej-till" type="date"></label>'+
+      '<div style="grid-column:1/-1;display:flex;gap:8px"><button class="primary" type="submit">Spara</button><button type="button" id="ej-cancel">Avbryt</button></div></form>';
+  v.querySelectorAll(".modes button").forEach(function(b){ b.addEventListener("click", function(){ mode=b.dataset.m; updateJob(); $("#scan").focus(); }); });
+  $("#back").addEventListener("click", function(){ go("jobb"); });
+  $("#scanform").addEventListener("submit", function(e){ e.preventDefault(); var val=$("#scan").value; $("#scan").value=""; if(val.trim()) handleScan(val); });
+  $("#addq").addEventListener("input", renderAdd);
+  $("#cambtn").addEventListener("click", function(){ startCam(function(code){ handleScan(code); var n=normalize(code); $("#camtxt").textContent = items.has(n)? n+" · "+itemName(n) : "Okänd kod"; }); });
+  $("#jstatus").addEventListener("change", function(e){ var j=jobs.get(jobOpen); j.status=e.target.value; call("updateJob",{id:jobOpen, fields:{status:j.status}}).catch(fail); });
+  $("#copy").addEventListener("click", copyList);
+  $("#editbtn").addEventListener("click", function(){ var j=jobs.get(jobOpen); $("#ej-namn").value=j.namn||""; $("#ej-kund").value=j.kund||""; $("#ej-plats").value=j.plats||""; $("#ej-fran").value=j.fran||""; $("#ej-till").value=j.till||""; $("#editform").hidden=false; });
+  $("#ej-cancel").addEventListener("click", function(){ $("#editform").hidden=true; });
+  $("#editform").addEventListener("submit", function(e){
+    e.preventDefault(); var j=jobs.get(jobOpen);
+    var f={namn:$("#ej-namn").value.trim()||j.namn, kund:$("#ej-kund").value.trim(), plats:$("#ej-plats").value.trim(), fran:$("#ej-fran").value, till:$("#ej-till").value||$("#ej-fran").value};
+    Object.assign(j,f); $("#editform").hidden=true; updateJob();
+    call("updateJob",{id:jobOpen, fields:f}).then(function(){ toast("Uppgifterna sparades"); }).catch(fail);
+  });
+  $("#del").addEventListener("click", function(){ $("#del").hidden=true; $("#delconf").hidden=false; });
+  $("#delno").addEventListener("click", function(){ $("#del").hidden=false; $("#delconf").hidden=true; });
+  $("#delyes").addEventListener("click", function(){ var id=jobOpen; call("deleteJob",{id:id}).then(function(){ jobs.delete(id); go("jobb"); toast("Jobbet togs bort"); }).catch(fail); });
+  $("#plist").addEventListener("click", function(e){ var b=e.target.closest(".unit"); if(b) toggleUnit(b.dataset.id); });
+  updateJob();
+  setTimeout(function(){ $("#scan").focus(); },0);
+}
+
+function updateJob(){
+  var j=jobs.get(jobOpen);
+  if(!j){ go("jobb"); toast("Jobbet togs bort på en annan enhet"); return; }
+  if(!$("#plist")){ buildJob(); return; }
+  $("#jh-namn").textContent=j.namn||"Namnlöst jobb";
+  $("#jh-meta").textContent=[period(j), j.kund, j.plats].filter(Boolean).join(" · ");
+  document.querySelectorAll(".modes button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.m===mode)); });
+  $("#modehint").textContent=HINTS[mode];
+  if(document.activeElement!==$("#jstatus")) $("#jstatus").value=j.status||"planerad";
+  var s=stats(j), n=s.ids.length;
+  function pct(a,b){ return b?Math.round(a/b*100):0; }
+  $("#summary").innerHTML =
+    '<div class="stat"><span class="eyebrow">Packlista</span><b>'+n+'</b><span class="muted" style="font-size:13px">enheter</span></div>'+
+    '<div class="stat"><span class="eyebrow">Utpackat</span><b>'+s.ut.length+'<span class="muted" style="font-size:15px"> / '+n+'</span></b><div class="meter"><i style="width:'+pct(s.ut.length,n)+'%"></i></div></div>'+
+    '<div class="stat"><span class="eyebrow">Tillbaka</span><b>'+s.inn.length+'<span class="muted" style="font-size:15px"> / '+s.ut.length+'</span></b><div class="meter"><i style="width:'+pct(s.inn.length,s.ut.length)+'%;background:var(--ok)"></i></div></div>';
+  if(!n){ $("#plist").innerHTML='<div class="empty" style="margin-top:16px">Packlistan är tom. Välj <b>Planera</b> och skanna etiketterna, eller lägg till från registret.</div>'; renderAdd(); return; }
+  var groups={};
+  s.ids.forEach(function(id){
+    var it=items.get(id)||{kategori:"Övrigt",benamning:"Okänd enhet",produkt_nr:9999};
+    var k=it.kategori||"Övrigt"; groups[k]=groups[k]||{};
+    var pk=it.produkt_nr+"|"+it.benamning; (groups[k][pk]=groups[k][pk]||{name:it.benamning, nr:it.produkt_nr, ids:[]}).ids.push(id);
+  });
+  var html="", cats=CATS.concat(Object.keys(groups).filter(function(k){return CATS.indexOf(k)<0;}));
+  cats.forEach(function(c){
+    if(!groups[c]) return;
+    html+='<div class="cat"><div class="eyebrow">'+esc(c)+'</div>';
+    Object.values(groups[c]).sort(function(a,b){return a.nr-b.nr;}).forEach(function(g){
+      var target = mode==="in" ? g.ids.filter(function(i){return on(j.ut,i);}) : g.ids;
+      var done = mode==="in" ? target.filter(function(i){return on(j["in"],i);}).length : g.ids.filter(function(i){return on(j.ut,i);}).length;
+      var none = mode==="in" && !target.length;
+      var cls = mode==="plan"||none ? "" : (done===target.length && target.length ? "done" : "missing");
+      html+='<div class="prod '+cls+'"><div class="name">'+esc(g.name)+'</div><div class="count">'+(mode==="plan"? g.ids.length+" st" : none? "ej ute" : done+"/"+target.length)+'</div><div class="units">'+
+        g.ids.map(function(id){
+          var st = on(j["in"],id)&&on(j.ut,id) ? "in" : on(j.ut,id) ? "ut" : "";
+          return '<button class="unit '+st+(id===lastFlash?" flash":"")+'" data-id="'+id+'" title="'+(mode==="plan"?"Ta bort från packlistan":"Klicka för att bocka av eller ångra")+'">'+id+'</button>';
+        }).join("")+'</div></div>';
+    });
+    html+='</div>';
+  });
+  html+='<div class="legend"><span><i style="border:1.5px dashed var(--line)"></i>Kvar att packa</span><span><i style="background:var(--accent)"></i>Utpackad</span><span><i style="background:var(--ok-bg);border:1.5px solid var(--ok)"></i>Tillbaka</span></div>';
+  $("#plist").innerHTML=html; lastFlash=null;
+  renderAdd();
+}
+
+function feedback(kind, title, detail, actions){
+  var fb=$("#fb"); if(!fb) return;
+  fb.className="fb "+kind;
+  fb.innerHTML='<div class="grow"><strong class="mono">'+esc(title)+'</strong> <span>'+esc(detail||"")+'</span></div>';
+  (actions||[]).forEach(function(a){ var b=document.createElement("button"); b.className="small"; b.textContent=a.label; b.addEventListener("click", function(){ a.run(); $("#scan").focus(); }); fb.appendChild(b); });
+  beep(kind);
+  scanLog.unshift({t:Date.now(), title:title, kind:kind}); if(scanLog.length>8) scanLog.length=8;
+  $("#log").innerHTML = '<div class="eyebrow" style="margin-top:6px">Senaste skanningar</div>'+scanLog.map(function(l){ return '<div><span class="t">'+fmtTime(l.t)+'</span><span style="color:var(--'+(l.kind==="ok"?"ok":l.kind==="warn"?"warn":"err")+')">'+esc(l.title)+'</span></div>'; }).join("");
+}
+
+function addToList(j, ids, alsoOut){
+  ids.forEach(function(id){ j.lista[id]=true; if(alsoOut) j.ut[id]=nowIso(); });
+  updateJob();
+  return call("addLines",{jobId:j.id, ids:ids, ut:!!alsoOut}).catch(fail);
+}
+
+function handleScan(raw){
+  var id=normalize(raw), j=jobs.get(jobOpen); if(!j) return;
+  if(!items.has(id)){ feedback("err", id, "Koden finns inte i registret."); return; }
+  var name=itemName(id)+unitLabel(id), inList=on(j.lista,id), other;
+  lastFlash=id;
+  if(mode==="plan"){
+    if(inList){ feedback("warn", id, name+" finns redan i packlistan."); updateJob(); return; }
+    other=bookedElsewhere(id,j);
+    addToList(j,[id],false);
+    feedback(other?"warn":"ok", id, name+(other?" · tillagd, men är också bokad på "+other.j.namn+" ("+period(other.j)+")":" · tillagd"));
+    return;
+  }
+  if(mode==="ut"){
+    if(!inList){
+      feedback("warn", id, name+" finns inte i packlistan.", [{label:"Lägg till och bocka av", run:function(){ addToList(j,[id],true); feedback("ok", id, name+" · tillagd och utpackad"); }}]);
+      return;
+    }
+    if(on(j.ut,id)){ feedback("warn", id, name+" är redan utpackad."); updateJob(); return; }
+    other=whereOut(id,jobOpen);
+    j.ut[id]=nowIso(); updateJob();
+    call("mark",{jobId:j.id,id:id,field:"ut",on:true}).catch(fail);
+    feedback(other?"warn":"ok", id, name+(other?" · utpackad, men står som ute på "+other.j.namn:" · utpackad"));
+    return;
+  }
+  if(mode==="in"){
+    if(!on(j.ut,id)){ other=whereOut(id,jobOpen); feedback("warn", id, name+(other?" hör till jobbet "+other.j.namn+".":" är inte utpackad på det här jobbet.")); return; }
+    if(on(j["in"],id)){ feedback("warn", id, name+" är redan inskannad."); updateJob(); return; }
+    j["in"][id]=nowIso(); updateJob();
+    call("mark",{jobId:j.id,id:id,field:"in",on:true}).catch(fail);
+    feedback("ok", id, name+" · tillbaka");
+  }
+}
+
+function toggleUnit(id){
+  var j=jobs.get(jobOpen);
+  if(mode==="plan"){ delete j.lista[id]; delete j.ut[id]; delete j["in"][id]; updateJob(); call("removeLine",{jobId:j.id,id:id}).catch(fail); toast(id+" togs bort från packlistan"); return; }
+  if(mode==="ut"){ var onNow=!on(j.ut,id); if(onNow) j.ut[id]=nowIso(); else { delete j.ut[id]; delete j["in"][id]; } updateJob(); call("mark",{jobId:j.id,id:id,field:"ut",on:onNow}).catch(fail); return; }
+  if(mode==="in"){ if(!on(j.ut,id)){ toast(id+" är inte utpackad"); return; } var onIn=!on(j["in"],id); if(onIn) j["in"][id]=nowIso(); else delete j["in"][id]; updateJob(); call("mark",{jobId:j.id,id:id,field:"in",on:onIn}).catch(fail); }
+}
+
+function products(){
+  var prods={};
+  items.forEach(function(it,id){ var k=it.produkt_nr; (prods[k]=prods[k]||{name:it.benamning, kat:it.kategori, ids:[]}).ids.push(id); });
+  return prods;
+}
+function renderAdd(){
+  var el=$("#addlist"); if(!el) return; var j=jobs.get(jobOpen); if(!j) return;
+  var q=$("#addq").value.trim().toLowerCase(), prods=products();
+  var rows=Object.keys(prods).sort(function(a,b){return a-b;}).filter(function(k){ var p=prods[k]; return !q || (p.name+" "+p.kat+" "+p.ids.join(" ")).toLowerCase().indexOf(q)>=0; });
+  el.innerHTML = rows.slice(0,60).map(function(k){
+    var p=prods[k], free=p.ids.filter(function(i){return !on(j.lista,i);});
+    var busy=free.filter(function(i){return bookedElsewhere(i,j)||whereOut(i,j.id);}).length;
+    return '<div class="addrow"><div style="min-width:0"><div>'+esc(p.name)+'</div><div class="muted mono" style="font-size:12px">'+(p.ids.length-free.length)+'/'+p.ids.length+' i jobbet'+(busy?' · '+busy+' bokad på annat jobb':'')+'</div></div>'+
+      '<div class="btns">'+(free.length? '<button class="small" data-add="'+k+'" data-n="1">+1</button>'+(free.length>1?'<button class="small" data-add="'+k+'" data-n="all">+ alla</button>':'') : '<span class="pill klar">Alla med</span>')+'</div></div>';
+  }).join("") || '<p class="muted">Inget matchar.</p>';
+  el.querySelectorAll("[data-add]").forEach(function(b){ b.addEventListener("click", function(){
+    var p=prods[b.dataset.add], free=p.ids.filter(function(i){return !on(j.lista,i);});
+    var ok=free.filter(function(i){return !(bookedElsewhere(i,j)||whereOut(i,j.id));}), busy=free.filter(function(i){return ok.indexOf(i)<0;});
+    var take = b.dataset.n==="all" ? ok.concat(busy) : ok.concat(busy).slice(0,1);
+    addToList(j,take,false);
+    var nb=take.filter(function(i){return busy.indexOf(i)>=0;}).length;
+    toast(take.length+" st "+p.name+" tillagd"+(nb?" ("+nb+" är också bokad på annat jobb)":""));
+  }); });
+}
+
+function copyList(){
+  var j=jobs.get(jobOpen), s=stats(j);
+  var lines=[[j.namn, period(j), j.kund, j.plats].filter(Boolean).join(" · "), ""];
+  s.ids.forEach(function(id){ lines.push((on(j["in"],id)?"[åter]":on(j.ut,id)?"[ut]  ":"[ ]   ")+" "+id+"  "+itemName(id)+unitLabel(id)); });
+  var text=lines.join("\n");
+  function fallback(){ var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); toast("Packlistan kopierades"); }catch(e){ toast("Kunde inte kopiera"); } ta.remove(); }
+  try{ navigator.clipboard.writeText(text).then(function(){toast("Packlistan kopierades");}, fallback); }catch(e){ fallback(); }
+}
+
+/* ---------- enhetsvy (från QR-kod) ---------- */
+function renderItem(){
+  var id=itemOpen, it=items.get(id), v=$("#view");
+  if(!it){ v.innerHTML='<section class="empty">Okänd enhet '+esc(id)+'.</section>'; return; }
+  var active=Array.from(jobs.values()).filter(function(j){ return j.status!=="klar"; }).sort(function(a,b){ return String(a.fran||"9").localeCompare(String(b.fran||"9")); });
+  var mine=active.filter(function(j){ return on(j.lista,id); });
+  var w=whereOut(id);
+  var state = w ? '<span class="pill ute">Ute på '+esc(w.j.namn)+'</span>' : '<span class="pill">Hemma</span>';
+  var cards = mine.map(function(j){
+    var isOut=on(j.ut,id), isIn=on(j["in"],id);
+    var btn = !isOut ? '<button class="primary" data-act="ut" data-job="'+esc(j.id)+'">Packa ut</button>'
+      : !isIn ? '<button class="primary" data-act="in" data-job="'+esc(j.id)+'">Packa in</button>'
+      : '<span class="pill klar">Tillbaka</span>';
+    return '<div class="jobrow" style="cursor:default"><div><div style="font-weight:600">'+esc(j.namn)+'</div><div class="meta">'+esc([period(j), j.plats].filter(Boolean).join(" · "))+'</div></div><div class="prog">'+btn+'</div></div>';
+  }).join("");
+  var others = active.filter(function(j){ return !on(j.lista,id); });
+  v.innerHTML = '<section><div class="eyebrow">Enhet</div><h1 class="mono" style="margin-top:4px">'+esc(id)+'</h1>'+
+    '<p style="margin:6px 0 0;font-size:18px">'+esc(it.benamning)+(it.antal>1?' <span class="muted mono">'+it.enhet+'/'+it.antal+'</span>':'')+'</p>'+
+    '<p class="muted" style="margin:4px 0 0">'+esc([it.kategori, it.artnr, it.serie? "S/N "+it.serie : ""].filter(Boolean).join(" · "))+'</p>'+
+    '<div style="margin-top:10px">'+state+'</div></section>'+
+    '<section><h2>Jobb med den här enheten</h2><div class="jobs">'+(cards||'<div class="empty">Enheten finns inte på något aktivt jobb.</div>')+'</div></section>'+
+    (others.length? '<section><h2>Lägg till på jobb</h2><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><select id="it-job" style="flex:1;min-width:200px">'+others.map(function(j){ var b=bookedElsewhere(id,j); return '<option value="'+esc(j.id)+'">'+esc(j.namn)+(j.fran?' · '+period(j):'')+(b?' (krock med '+esc(b.j.namn)+')':'')+'</option>'; }).join("")+'</select><button id="it-add">Lägg till</button><button class="primary" id="it-addout">Lägg till och packa ut</button></div></section>' : '')+
+    '<div class="tools"><button id="it-cam" class="primary">Skanna nästa</button><button id="it-jobs">Alla jobb</button></div>';
+  v.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click", function(){
+    var j=jobs.get(b.dataset.job), f=b.dataset.act;
+    if(f==="ut") j.ut[id]=nowIso(); else j["in"][id]=nowIso();
+    beep("ok"); toast(id+(f==="ut"?" packad ut":" tillbaka")+" · "+j.namn); renderItem();
+    call("mark",{jobId:j.id,id:id,field:f,on:true}).catch(fail);
+  }); });
+  var add=function(out){ var j=jobs.get($("#it-job").value); addToList(j,[id],out); beep("ok"); toast(id+" tillagd på "+j.namn+(out?" och utpackad":"")); renderItem(); };
+  if($("#it-add")){ $("#it-add").addEventListener("click", function(){ add(false); }); $("#it-addout").addEventListener("click", function(){ add(true); }); }
+  $("#it-jobs").addEventListener("click", function(){ go("jobb"); });
+  $("#it-cam").addEventListener("click", function(){ startCam(function(code){ var nid=normalize(code); if(items.has(nid)){ stopCam(); go("item", nid); } else toast("Okänd kod: "+code); }); });
+}
+
+/* ---------- kamera (QR) ---------- */
+var cam={stream:null, raf:0, last:"", lastT:0};
+function stopCam(){
+  if(cam.raf) cancelAnimationFrame(cam.raf); cam.raf=0;
+  if(cam.stream){ cam.stream.getTracks().forEach(function(t){t.stop();}); cam.stream=null; }
+  var o=$("#camwrap"); if(o) o.remove();
+}
+function startCam(onCode){
+  stopCam();
+  var wrap=document.createElement("div"); wrap.id="camwrap";
+  wrap.innerHTML='<div class="camin"><video id="camv" playsinline muted></video><div class="camframe"></div><p id="camtxt">Rikta kameran mot QR-koden</p><button id="camclose">Stäng kameran</button></div>';
+  document.body.appendChild(wrap);
+  $("#camclose").addEventListener("click", stopCam);
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ $("#camtxt").textContent="Kameran stöds inte här. Använd telefonens vanliga kamera-app i stället: den öppnar enheten direkt."; return; }
+  var det = ("BarcodeDetector" in window) ? new BarcodeDetector({formats:["qr_code","code_128"]}) : null;
+  var canvas=document.createElement("canvas"), ctx=canvas.getContext("2d",{willReadFrequently:true});
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}, audio:false}).then(function(st){
+    cam.stream=st; var v=$("#camv"); v.srcObject=st; v.play();
+    var tick=function(){
+      if(!cam.stream) return;
+      var done=function(code){
+        if(code){ var now=Date.now(); if(code!==cam.last || now-cam.lastT>2500){ cam.last=code; cam.lastT=now; onCode(code); } }
+        cam.raf=requestAnimationFrame(tick);
+      };
+      if(v.readyState<2){ cam.raf=requestAnimationFrame(tick); return; }
+      if(det){ det.detect(v).then(function(r){ done(r&&r[0]&&r[0].rawValue); }).catch(function(){ done(null); }); return; }
+      if(window.jsQR){
+        var w=640, h=Math.round(v.videoHeight*640/v.videoWidth)||480; canvas.width=w; canvas.height=h; ctx.drawImage(v,0,0,w,h);
+        var r=jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:"dontInvert"}); done(r&&r.data); return;
+      }
+      done(null);
+    };
+    tick();
+  }).catch(function(){ $("#camtxt").textContent="Fick inte använda kameran. Tillåt kameran i webbläsaren, eller använd telefonens vanliga kamera-app: den öppnar enheten direkt."; });
+}
+
+/* ---------- register ---------- */
+function renderRegister(){
+  $("#view").innerHTML =
+    '<section><div class="eyebrow">Register</div><h1 style="margin-top:4px">Utrustning</h1>'+
+    '<p class="muted" style="margin:6px 0 0">Varje etikett har ett eget ID. Fyll gärna i serienummer, så vet ni exakt vilken enhet som är vilken.</p>'+
+    '<div class="filters"><input id="rq" placeholder="Sök på namn, ID eller serienummer" aria-label="Sök">'+
+      '<select id="rc" aria-label="Kategori"><option value="">Alla kategorier</option>'+CATS.map(function(c){return "<option>"+c+"</option>";}).join("")+'</select>'+
+      '<select id="rs" aria-label="Var"><option value="">Hemma och ute</option><option value="hemma">Hemma</option><option value="ute">Ute på jobb</option></select></div>'+
+    '<div class="tablewrap"><table><thead><tr><th>ID</th><th>Benämning</th><th>Kategori</th><th>Artikelnr</th><th>Serienummer</th><th>Var</th></tr></thead><tbody id="rbody"></tbody></table></div>'+
+    '<p class="muted" id="rcount" style="font-size:13px"></p></section>'+
+    '<section><h2>Lägg till ny utrustning</h2><p class="muted" style="margin:4px 0 0;font-size:14px">Nya enheter får nästa lediga ID. Be Claude om etiketter till dem.</p>'+
+    '<form class="newitem" id="ni"><label class="wide">Benämning<input id="ni-namn" required></label>'+
+      '<label>Kategori<select id="ni-kat">'+CATS.map(function(c){return "<option>"+c+"</option>";}).join("")+'</select></label>'+
+      '<label>Artikelnr<input id="ni-art"></label><label>Antal<input id="ni-antal" type="number" min="1" max="100" value="1"></label>'+
+      '<button class="primary" type="submit" id="ni-btn">Lägg till</button></form></section>';
+  ["rq","rc","rs"].forEach(function(i){ $("#"+i).addEventListener("input", updateRegisterRows); });
+  $("#rbody").addEventListener("change", function(e){
+    var inp=e.target.closest("input[data-serie]"); if(!inp) return;
+    var id=inp.dataset.serie, v=inp.value.trim(); var it=items.get(id); if(it) it.serie=v;
+    call("setSerial",{id:id, serie:v}).then(function(){ toast("Serienummer sparat"); }).catch(fail);
+  });
+  $("#ni").addEventListener("submit", function(e){
+    e.preventDefault();
+    var p={benamning:$("#ni-namn").value.trim(), kategori:$("#ni-kat").value, artnr:$("#ni-art").value.trim(), antal:Number($("#ni-antal").value)||1};
+    if(!p.benamning) return; $("#ni-btn").disabled=true;
+    call("addItems",p).then(function(ids){ $("#ni-btn").disabled=false; $("#ni").reset(); toast(ids.length+" st tillagda: "+ids[0]+(ids.length>1?" – "+ids[ids.length-1]:"")); reload(); })
+      .catch(function(err){ $("#ni-btn").disabled=false; fail(err); });
+  });
+  updateRegisterRows();
+}
+function updateRegisterRows(){
+  var body=$("#rbody"); if(!body) return;
+  if(document.activeElement && document.activeElement.matches && document.activeElement.matches("input[data-serie]")) return;
+  var q=$("#rq").value.trim().toLowerCase(), c=$("#rc").value, s=$("#rs").value;
+  var rows=Array.from(items.entries()).sort(function(a,b){return a[0].localeCompare(b[0]);}).filter(function(e){
+    var id=e[0], it=e[1]; if(c && it.kategori!==c) return false;
+    var w=whereOut(id); if(s==="hemma"&&w) return false; if(s==="ute"&&!w) return false;
+    return !q || (id+" "+it.benamning+" "+(it.artnr||"")+" "+(it.serie||"")).toLowerCase().indexOf(q)>=0;
+  });
+  body.innerHTML = rows.map(function(e){ var id=e[0], it=e[1], w=whereOut(id);
+    return '<tr><td class="mono" style="white-space:nowrap">'+id+'</td><td>'+esc(it.benamning)+(it.antal>1?' <span class="muted mono">'+it.enhet+'/'+it.antal+'</span>':'')+'</td><td>'+esc(it.kategori)+'</td><td class="mono muted">'+esc(it.artnr||"")+'</td>'+
+      '<td><input data-serie="'+id+'" id="s-'+id+'" value="'+esc(it.serie||"")+'" placeholder="–" aria-label="Serienummer '+id+'"></td>'+
+      '<td>'+(w?'<button class="pill ute" data-job="'+esc(w.jid)+'">'+esc(w.j.namn)+'</button>':'<span class="pill">Hemma</span>')+'</td></tr>';
+  }).join("") || '<tr><td colspan="6" class="muted">'+(items.size?"Inget matchar sökningen.":"Registret är tomt.")+'</td></tr>';
+  body.querySelectorAll("[data-job]").forEach(function(b){ b.addEventListener("click", function(){ go("job", b.dataset.job); }); });
+  $("#rcount").textContent = rows.length+" av "+items.size+" enheter";
+}
+
+/* ---------- skannern skriver även när fokus ligger fel ---------- */
+document.addEventListener("keydown", function(e){
+  var scan=$("#scan"); if(!scan) return;
+  var a=document.activeElement;
+  if(a && (a.tagName==="INPUT"||a.tagName==="SELECT"||a.tagName==="TEXTAREA")) return;
+  if(e.ctrlKey||e.metaKey||e.altKey||e.key.length!==1) return;
+  scan.focus();
+});
+
+/* ---------- start ---------- */
+var saved=getSaved();
+if(saved) login(saved,true); else $("#code").focus();
+})();
+</script>
+</body>
+</html>
